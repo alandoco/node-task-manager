@@ -27,6 +27,7 @@ const auth = async (req, res, next) => {
         //can be used in the route handler
         //Avoids the route handler having to re-fetch the user
         req.user = user
+        req.token = token
         next()
     } catch(e){
         res.status(401).send({error: 'Please authenticate'})

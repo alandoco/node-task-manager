@@ -1,45 +1,69 @@
 const express = require('express')
 const User = require('../models/user')
+const auth = require('../middleware/auth')
 const router = new express.Router()
 
 router.post('/users', async (req, res) => {
-    const user = new User(req.body)
-
     try {
-        await user.save()
-        res.status(201).send(user)
+        const user = new User(req.body)
+        const token = await user.generateAuthToken()
+
+        res.status(201).send({user,token})
     } catch(e) {
         res.status(400).send(e)
     }
 
 })
 
-router.get('/users', async (req, res) => {
-
+router.post('/users/login', async (req,res) => {
     try {
-        const users = await User.find({})
-        res.send(users)
-    } catch(e) {
-        res.status(500).send()
-    }
-})
-
-router.get('/users/:id', async (req, res) => {
-
-    try{
-        const user = await User.findById(req.params.id)
-
-        if(!user){
-            return res.status(404).send()
-        }
+        const user = await User.findByCredentials(req.body.email, req.body.password)
+        const token = await user.generateAuthToken()
         
-        res.send(user)
+        res.send({user, token})
+
     } catch(e) {
+        res.status(400).send()
+    }
+})
+
+router.post('/users/logout', auth, async (req, res) => {
+    try {
+        //Loops through tokens array
+        //returns true when a token doesn't matcht the token set in auth()
+        //If it returns false, that token is excluded from the array
+        req.user.tokens = req.user.tokens.filter((token) => {
+            return token.token !== req.token
+        })
+        //saves the user to db
+        await req.user.save()
+
+        res.send()
+    } catch (e) {
         res.status(500).send()
     }
 })
 
-router.patch('/users/:id', async (req, res) => {
+router.post('/users/logoutAll', auth, async (req, res) => {
+    try {
+        req.user.tokens = []
+        await req.user.save()
+
+        res.send()
+    }
+
+    catch (e) {
+        res.status(500).send()
+    }
+})
+
+router.get('/users/me', auth, async (req, res) => {
+    //Sending back user profile. This was added to req
+    //in auth.js
+    res.send(req.user)
+})
+
+router.patch('/users/me', auth, async (req, res) => {
     //Gets the keys from request body
     const updates = Object.keys(req.body)
     const allowedUpdates = ['name', 'email', 'password', 'age']
@@ -56,28 +80,25 @@ router.patch('/users/:id', async (req, res) => {
     }
 
     try {
-        //new: true returns the updated user
-        const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true, })
-        if(!user){
-            return res.status(404).send()
-        }
+        updates.forEach((update) => {
+            //Using sq brackets rather than .
+            //as we need to access dynamic update variable
+            req.user[update] = req.body[update]
+        })
 
-        res.send(user)
+        await req.user.save()
+        res.send(req.user)
     } catch(e) {
         res.status(400).send(e)
     }
 })
 
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/me', auth, async (req, res) => {
 
     try {
-        const user = await User.findByIdAndDelete(req.params.id)
-        
-        if(!user){
-            return res.status(404).send()
-        }
-        
-        res.send(user)
+        //Remove is a mongoose method to remove a document 
+        await req.user.remove()
+        res.send(req.user)
     } catch(e) {
         res.status(500).send()
     }
