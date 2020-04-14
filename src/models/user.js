@@ -47,6 +47,8 @@ const userSchema = new mongoose.Schema({
             required: true
         }
     }]
+}, {
+    timestamps:true //Adds created and modified dates
 })
 
 userSchema.virtual('tasks', {
