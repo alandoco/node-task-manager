@@ -20,5 +20,3 @@ app.listen(port, () => {
     console.log('Server is up on ' + port)
 })
 
-const Task = require('./models/task')
-const User = require('./models/user')
