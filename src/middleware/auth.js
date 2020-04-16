@@ -5,7 +5,7 @@ const auth = async (req, res, next) => {
     try{
         //Getting token from header and removing Bearer string
         const token = req.header('Authorization').replace('Bearer ','')
-        const decoded = jwt.verify(token, 'thisismynewcourse')
+        const decoded = jwt.verify(token, process.env.JWT_SECRET)
         //This finds a user using the id from the decoded token
         //And also searches that users token array(tokens.token)
         //to check if it exists
